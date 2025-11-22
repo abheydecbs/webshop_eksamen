@@ -4,6 +4,22 @@ let filtreretProdukter = [];
 
 // Indkøbskurv
 let kurv = JSON.parse(localStorage.getItem('kurv')) || [];
+let serverKurvAktiv = false;
+let authCheckUdført = false;
+
+async function initKurvFraServer() {
+    try {
+        const me = await fetch('/api/auth/me');
+        if (!me.ok) return;
+        const kurvRes = await fetch('/api/kurv');
+        if (kurvRes.ok) {
+            const data = await kurvRes.json();
+            kurv = data.map(item => ({ ...item }));
+            serverKurvAktiv = true;
+            opdaterKurvAntal();
+        }
+    } catch(e) { /* ignorér */ } finally { authCheckUdført = true; }
+}
 
 // Hent produkter fra API
 async function hentProdukter() {
@@ -97,16 +113,32 @@ function sorterProdukter() {
 }
 
 // Tilføj til kurv
-function tilføjTilKurv(produktId) {
+async function tilføjTilKurv(produktId) {
     const produkt = produkter.find(p => p.id === produktId);
+    if (!produkt) return;
+    if (!authCheckUdført) await initKurvFraServer();
+    if (serverKurvAktiv) {
+        try {
+            const res = await fetch('/api/kurv/add', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ produktId, antal: 1 })
+            });
+            if (res.ok) {
+                const data = await res.json();
+                kurv = data.map(item => ({ ...item }));
+                opdaterKurvAntal();
+                visKurvNotifikation(produkt.navn);
+                return;
+            }
+        } catch(e) { /* fallback til lokal */ }
+    }
     const eksisterendeProdukt = kurv.find(item => item.id === produktId);
-
     if (eksisterendeProdukt) {
         eksisterendeProdukt.antal++;
     } else {
         kurv.push({ ...produkt, antal: 1 });
     }
-
     gemKurv();
     opdaterKurvAntal();
     visKurvNotifikation(produkt.navn);
@@ -114,6 +146,7 @@ function tilføjTilKurv(produktId) {
 
 // Gem kurv til localStorage
 function gemKurv() {
+    if (serverKurvAktiv) return; // serveren er autoritativ
     localStorage.setItem('kurv', JSON.stringify(kurv));
 }
 
@@ -142,8 +175,10 @@ function opdaterKurvAntal() {
 }
 
 // Initialiser
-hentProdukter();
-opdaterKurvAntal();
+initKurvFraServer().then(() => {
+    hentProdukter();
+    opdaterKurvAntal();
+});
 
 // Event listeners for søgning og filtrering
 document.getElementById('søg-input').addEventListener('input', søgProdukter);

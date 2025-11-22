@@ -70,6 +70,30 @@ db.serialize(() => {
         )
     `);
 
+    // Server-side kurv (en kurv per bruger)
+    db.run(`
+        CREATE TABLE IF NOT EXISTS kurv (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER UNIQUE NOT NULL,
+            opdateret_dato DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES brugere(id)
+        )
+    `);
+
+    // Linjer i kurven
+    db.run(`
+        CREATE TABLE IF NOT EXISTS kurv_linjer (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            kurv_id INTEGER NOT NULL,
+            produkt_id INTEGER NOT NULL,
+            produkt_navn TEXT NOT NULL,
+            produkt_pris INTEGER NOT NULL,
+            antal INTEGER NOT NULL,
+            FOREIGN KEY (kurv_id) REFERENCES kurv(id),
+            FOREIGN KEY (produkt_id) REFERENCES produkter(id)
+        )
+    `);
+
     // Tjek om der allerede er produkter
     db.get('SELECT COUNT(*) as count FROM produkter', (err, row) => {
         if (err) {

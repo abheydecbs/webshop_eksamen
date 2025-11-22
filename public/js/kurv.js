@@ -1,5 +1,24 @@
 // Hent kurv fra localStorage
 let kurv = JSON.parse(localStorage.getItem('kurv')) || [];
+let serverKurvAktiv = false;
+let authCheckUdført = false;
+
+async function initKurv() {
+    try {
+        const me = await fetch('/api/auth/me');
+        if (!me.ok) { opdaterKurv(); return; }
+        const res = await fetch('/api/kurv');
+        if (res.ok) {
+            const data = await res.json();
+            kurv = data.map(item => ({ ...item }));
+            serverKurvAktiv = true;
+        }
+    } catch(e) { /* ignorér */ }
+    finally {
+        authCheckUdført = true;
+        opdaterKurv();
+    }
+}
 
 // Opdater kurv visning
 function opdaterKurv() {
@@ -58,21 +77,50 @@ function opdaterKurv() {
 }
 
 // Ændr antal
-function ændrAntal(produktId, ændring) {
+async function ændrAntal(produktId, ændring) {
     const produkt = kurv.find(item => item.id === produktId);
-    if (produkt) {
-        produkt.antal += ændring;
-        if (produkt.antal <= 0) {
-            fjernFraKurv(produktId);
-        } else {
-            gemKurv();
-            opdaterKurv();
+    if (!produkt) return;
+    const nytAntal = produkt.antal + ændring;
+    if (!authCheckUdført) await initKurv();
+    if (serverKurvAktiv) {
+        if (nytAntal <= 0) {
+            await fjernFraKurv(produktId);
+            return;
         }
+        try {
+            const res = await fetch(`/api/kurv/item/${produktId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ antal: nytAntal })
+            });
+            if (res.ok) {
+                kurv = await res.json();
+                opdaterKurv();
+                return;
+            }
+        } catch(e) { /* fallback */ }
     }
+    produkt.antal = nytAntal;
+    if (produkt.antal <= 0) {
+        kurv = kurv.filter(item => item.id !== produktId);
+    }
+    gemKurv();
+    opdaterKurv();
 }
 
 // Fjern fra kurv
-function fjernFraKurv(produktId) {
+async function fjernFraKurv(produktId) {
+    if (!authCheckUdført) await initKurv();
+    if (serverKurvAktiv) {
+        try {
+            const res = await fetch(`/api/kurv/item/${produktId}`, { method: 'DELETE' });
+            if (res.ok) {
+                kurv = await res.json();
+                opdaterKurv();
+                return;
+            }
+        } catch(e) { /* fallback */ }
+    }
     kurv = kurv.filter(item => item.id !== produktId);
     gemKurv();
     opdaterKurv();
@@ -80,6 +128,7 @@ function fjernFraKurv(produktId) {
 
 // Gem kurv til localStorage
 function gemKurv() {
+    if (serverKurvAktiv) return;
     localStorage.setItem('kurv', JSON.stringify(kurv));
 }
 
@@ -202,7 +251,10 @@ async function afgiv_ordre(e) {
         // Vis bekræftelse
         visOrdreBekreftelse(result);
         
-        // Tøm kurv
+        // Tøm kurv (server først hvis aktiv)
+        if (serverKurvAktiv) {
+            try { await fetch('/api/kurv', { method: 'DELETE' }); } catch(e) { /* ignore */ }
+        }
         kurv = [];
         gemKurv();
         
@@ -230,4 +282,4 @@ function visOrdreBekreftelse(ordre) {
 }
 
 // Initialiser
-opdaterKurv();
+initKurv();
