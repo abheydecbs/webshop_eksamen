@@ -2,24 +2,7 @@
 let produkter = [];
 let filtreretProdukter = [];
 
-// Indkøbskurv
-let kurv = JSON.parse(localStorage.getItem('kurv')) || [];
-let serverKurvAktiv = false;
-let authCheckUdført = false;
-
-async function initKurvFraServer() {
-    try {
-        const me = await fetch('/api/auth/me');
-        if (!me.ok) return;
-        const kurvRes = await fetch('/api/kurv');
-        if (kurvRes.ok) {
-            const data = await kurvRes.json();
-            kurv = data.map(item => ({ ...item }));
-            serverKurvAktiv = true;
-            opdaterKurvAntal();
-        }
-    } catch(e) { /* ignorér */ } finally { authCheckUdført = true; }
-}
+// Kurv håndteres nu centralt i cart.js (window.Cart)
 
 // Hent produkter fra API
 async function hentProdukter() {
@@ -116,39 +99,12 @@ function sorterProdukter() {
 async function tilføjTilKurv(produktId) {
     const produkt = produkter.find(p => p.id === produktId);
     if (!produkt) return;
-    if (!authCheckUdført) await initKurvFraServer();
-    if (serverKurvAktiv) {
-        try {
-            const res = await fetch('/api/kurv/add', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ produktId, antal: 1 })
-            });
-            if (res.ok) {
-                const data = await res.json();
-                kurv = data.map(item => ({ ...item }));
-                opdaterKurvAntal();
-                visKurvNotifikation(produkt.navn);
-                return;
-            }
-        } catch(e) { /* fallback til lokal */ }
-    }
-    const eksisterendeProdukt = kurv.find(item => item.id === produktId);
-    if (eksisterendeProdukt) {
-        eksisterendeProdukt.antal++;
-    } else {
-        kurv.push({ ...produkt, antal: 1 });
-    }
-    gemKurv();
-    opdaterKurvAntal();
+    await Cart.add(produkt);
     visKurvNotifikation(produkt.navn);
 }
 
 // Gem kurv til localStorage
-function gemKurv() {
-    if (serverKurvAktiv) return; // serveren er autoritativ
-    localStorage.setItem('kurv', JSON.stringify(kurv));
-}
+function gemKurv() { /* Centraliseret i Cart */ }
 
 // Vis notifikation
 function visKurvNotifikation(produktNavn) {
@@ -168,16 +124,12 @@ function visKurvNotifikation(produktNavn) {
 }
 
 // Opdater kurv antal i header
-function opdaterKurvAntal() {
-    const kurvAntal = document.getElementById('kurv-antal');
-    const antalVarer = kurv.reduce((sum, item) => sum + item.antal, 0);
-    kurvAntal.textContent = antalVarer;
-}
+function opdaterKurvAntal() { Cart.updateHeaderCount(); }
 
 // Initialiser
-initKurvFraServer().then(() => {
+Cart.ensureAuthChecked().then(() => {
     hentProdukter();
-    opdaterKurvAntal();
+    Cart.updateHeaderCount();
 });
 
 // Event listeners for søgning og filtrering

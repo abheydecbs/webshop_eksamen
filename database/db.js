@@ -130,9 +130,9 @@ db.serialize(() => {
             });
             
             stmt.finalize();
-            console.log('✅ Database initialiseret med produkter');
+            console.log('Database initialiseret med produkter');
         } else {
-            console.log('✅ Database allerede initialiseret');
+            console.log('Database allerede initialiseret');
         }
     });
 });

@@ -1,24 +1,4 @@
-// Hent kurv fra localStorage
-let kurv = JSON.parse(localStorage.getItem('kurv')) || [];
-let serverKurvAktiv = false;
-let authCheckUdført = false;
-
-async function initKurv() {
-    try {
-        const me = await fetch('/api/auth/me');
-        if (!me.ok) { opdaterKurv(); return; }
-        const res = await fetch('/api/kurv');
-        if (res.ok) {
-            const data = await res.json();
-            kurv = data.map(item => ({ ...item }));
-            serverKurvAktiv = true;
-        }
-    } catch(e) { /* ignorér */ }
-    finally {
-        authCheckUdført = true;
-        opdaterKurv();
-    }
-}
+// Kurv logik er centraliseret i cart.js (window.Cart)
 
 // Opdater kurv visning
 function opdaterKurv() {
@@ -26,6 +6,8 @@ function opdaterKurv() {
     const kurvAntal = document.getElementById('kurv-antal');
     const totalPris = document.getElementById('total-pris');
     const checkoutBtn = document.getElementById('checkout-btn');
+
+    const kurv = Cart.getCart();
 
     if (kurv.length === 0) {
         kurvIndhold.innerHTML = '<p class="tom-kurv">Din kurv er tom</p>';
@@ -78,63 +60,23 @@ function opdaterKurv() {
 
 // Ændr antal
 async function ændrAntal(produktId, ændring) {
-    const produkt = kurv.find(item => item.id === produktId);
-    if (!produkt) return;
-    const nytAntal = produkt.antal + ændring;
-    if (!authCheckUdført) await initKurv();
-    if (serverKurvAktiv) {
-        if (nytAntal <= 0) {
-            await fjernFraKurv(produktId);
-            return;
-        }
-        try {
-            const res = await fetch(`/api/kurv/item/${produktId}`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ antal: nytAntal })
-            });
-            if (res.ok) {
-                kurv = await res.json();
-                opdaterKurv();
-                return;
-            }
-        } catch(e) { /* fallback */ }
-    }
-    produkt.antal = nytAntal;
-    if (produkt.antal <= 0) {
-        kurv = kurv.filter(item => item.id !== produktId);
-    }
-    gemKurv();
+    await Cart.changeQuantity(produktId, ændring);
     opdaterKurv();
 }
 
 // Fjern fra kurv
 async function fjernFraKurv(produktId) {
-    if (!authCheckUdført) await initKurv();
-    if (serverKurvAktiv) {
-        try {
-            const res = await fetch(`/api/kurv/item/${produktId}`, { method: 'DELETE' });
-            if (res.ok) {
-                kurv = await res.json();
-                opdaterKurv();
-                return;
-            }
-        } catch(e) { /* fallback */ }
-    }
-    kurv = kurv.filter(item => item.id !== produktId);
-    gemKurv();
+    await Cart.remove(produktId);
     opdaterKurv();
 }
 
 // Gem kurv til localStorage
-function gemKurv() {
-    if (serverKurvAktiv) return;
-    localStorage.setItem('kurv', JSON.stringify(kurv));
-}
+function gemKurv() { /* styres i Cart */ }
 
 // Checkout funktion - vis formular
 async function checkout() {
-    if (kurv.length === 0) {
+    const kurvData = Cart.getCart();
+    if (kurvData.length === 0) {
         alert('Din kurv er tom!');
         return;
     }
@@ -180,7 +122,7 @@ async function checkout() {
                 <h3>Din ordre</h3>
                 <div id="ordre-liste"></div>
                 <div class="ordre-total">
-                    <strong>Total: <span id="ordre-total-pris">${kurv.reduce((sum, item) => sum + (item.pris * item.antal), 0).toLocaleString('da-DK')}</span> kr.</strong>
+                    <strong>Total: <span id="ordre-total-pris">${kurvData.reduce((sum, item) => sum + (item.pris * item.antal), 0).toLocaleString('da-DK')}</span> kr.</strong>
                 </div>
             </div>
             
@@ -193,7 +135,8 @@ async function checkout() {
     
     // Vis ordre oversigt
     const ordreListe = document.getElementById('ordre-liste');
-    ordreListe.innerHTML = kurv.map(item => `
+    const kurvVis = Cart.getCart();
+    ordreListe.innerHTML = kurvVis.map(item => `
         <div class="ordre-item">
             <span>${item.navn} x ${item.antal}</span>
             <span>${(item.pris * item.antal).toLocaleString('da-DK')} kr.</span>
@@ -238,7 +181,7 @@ async function afgiv_ordre(e) {
             },
             body: JSON.stringify({
                 kunde: kunde,
-                kurv: kurv
+                kurv: Cart.getCart()
             })
         });
         
@@ -252,11 +195,7 @@ async function afgiv_ordre(e) {
         visOrdreBekreftelse(result);
         
         // Tøm kurv (server først hvis aktiv)
-        if (serverKurvAktiv) {
-            try { await fetch('/api/kurv', { method: 'DELETE' }); } catch(e) { /* ignore */ }
-        }
-        kurv = [];
-        gemKurv();
+        await Cart.clearAfterOrder();
         
     } catch (error) {
         console.error('Fejl ved ordre:', error);
@@ -282,4 +221,4 @@ function visOrdreBekreftelse(ordre) {
 }
 
 // Initialiser
-initKurv();
+Cart.ensureAuthChecked().then(()=>opdaterKurv());
