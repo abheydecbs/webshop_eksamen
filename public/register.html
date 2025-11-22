@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Opret Bruger - POWER</title>
+  <link rel="stylesheet" href="/css/style.css" />
+  <style>
+    .auth-container { max-width: 420px; margin: 3rem auto; background: #fff; padding:2rem; border-radius:8px; box-shadow:0 2px 10px rgba(0,0,0,0.1); }
+    .auth-container h2 { text-align:center; margin-bottom:1.5rem; }
+    .auth-form-group { margin-bottom:1rem; }
+    .auth-form-group label { display:block; margin-bottom:0.4rem; font-weight:bold; }
+    .auth-form-group input { width:100%; padding:0.7rem; border:2px solid #ddd; border-radius:4px; }
+    .auth-form-group input:focus { outline:none; border-color:#ff6600; }
+    .auth-actions { margin-top:1.5rem; display:flex; justify-content:space-between; align-items:center; }
+    .auth-btn { background:#ff6600; color:#fff; border:none; padding:0.75rem 1.5rem; border-radius:4px; cursor:pointer; font-weight:bold; }
+    .auth-btn:hover { background:#e55a00; }
+    .link { text-decoration:none; color:#666; }
+    .link:hover { color:#ff6600; }
+    .auth-error { background:#ffebee; color:#c00; padding:0.75rem 1rem; border-radius:4px; margin-bottom:1rem; display:none; }
+    .auth-success { background:#e8f9ee; color:#137a31; padding:0.75rem 1rem; border-radius:4px; margin-bottom:1rem; display:none; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>⚡ POWER</h1>
+    <p class="tagline">Opret Bruger</p>
+    <nav>
+      <ul>
+        <li><a href="/">Produkter</a></li>
+        <li><a href="/login.html">Login</a></li>
+      </ul>
+    </nav>
+  </header>
+
+  <div class="auth-container">
+    <h2>Opret konto</h2>
+    <div id="auth-error" class="auth-error"></div>
+    <div id="auth-success" class="auth-success"></div>
+    <form id="register-form">
+      <div class="auth-form-group">
+        <label for="email">Email</label>
+        <input type="email" id="email" required />
+      </div>
+      <div class="auth-form-group">
+        <label for="password">Password</label>
+        <input type="password" id="password" required minlength="4" />
+      </div>
+      <div class="auth-actions">
+        <a class="link" href="/login.html">Har du allerede en konto?</a>
+        <button type="submit" class="auth-btn">Opret</button>
+      </div>
+    </form>
+  </div>
+
+  <script src="/js/auth.js"></script>
+  <script>
+    document.getElementById('register-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const email = document.getElementById('email').value.trim();
+      const password = document.getElementById('password').value;
+      const errBox = document.getElementById('auth-error');
+      const okBox = document.getElementById('auth-success');
+      errBox.style.display = 'none';
+      okBox.style.display = 'none';
+      try {
+        const res = await fetch('/api/auth/register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Registrering fejlede');
+        okBox.textContent = 'Bruger oprettet - viderestiller...';
+        okBox.style.display = 'block';
+        setTimeout(() => window.location.href = '/', 1200);
+      } catch (err) {
+        errBox.textContent = err.message;
+        errBox.style.display = 'block';
+      }
+    });
+  </script>
+</body>
+</html>

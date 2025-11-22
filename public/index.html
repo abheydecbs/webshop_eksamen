@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>POWER - Elektronik til skarpe priser</title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+    <header>
+        <h1>⚡ POWER</h1>
+        <p class="tagline">Elektronik til skarpe priser</p>
+        <nav>
+            <ul>
+                <li><a href="/">Produkter</a></li>
+                <li><a href="/kurv.html">🛒 Kurv (<span id="kurv-antal">0</span>)</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <main>
+        <section id="produkter">
+            <div class="filter-section">
+                <h2>Vores Produkter</h2>
+                <div class="filter-controls">
+                    <input type="text" id="søg-input" placeholder="Søg efter produkter...">
+                    <select id="kategori-filter">
+                        <option value="alle">Alle kategorier</option>
+                        <option value="computere">Computere & Tablets</option>
+                        <option value="mobil">Mobil & Telefoni</option>
+                        <option value="tv">TV & Lyd</option>
+                        <option value="gaming">Gaming</option>
+                        <option value="tilbehor">Tilbehør</option>
+                    </select>
+                    <select id="sortering">
+                        <option value="standard">Sorter efter</option>
+                        <option value="pris-lav">Pris: Lav til høj</option>
+                        <option value="pris-høj">Pris: Høj til lav</option>
+                        <option value="navn">Navn A-Å</option>
+                    </select>
+                </div>
+            </div>
+            <div id="produkt-liste" class="produkt-grid">
+                <!-- Produkter indsættes her via JavaScript -->
+            </div>
+        </section>
+    </main>
+
+    <script src="/js/auth.js"></script>
+    <script src="/js/app.js"></script>
+</body>
+</html>

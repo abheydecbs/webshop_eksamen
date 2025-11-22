@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ordre Oversigt - POWER Admin</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <style>
+        .admin-container {
+            max-width: 1400px;
+            margin: 2rem auto;
+            padding: 0 2rem;
+        }
+
+        .admin-header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        .ordre-tabel {
+            width: 100%;
+            background: white;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .ordre-tabel table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .ordre-tabel th {
+            background-color: #1a1a1a;
+            color: white;
+            padding: 1rem;
+            text-align: left;
+            font-weight: bold;
+        }
+
+        .ordre-tabel td {
+            padding: 1rem;
+            border-bottom: 1px solid #eee;
+        }
+
+        .ordre-tabel tr:hover {
+            background-color: #f9f9f9;
+        }
+
+        .ordre-id {
+            color: #ff6600;
+            font-weight: bold;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: 12px;
+            font-size: 0.85rem;
+            font-weight: bold;
+        }
+
+        .status-modtaget {
+            background-color: #27ae60;
+            color: white;
+        }
+
+        .detalje-btn {
+            background-color: #ff6600;
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        .detalje-btn:hover {
+            background-color: #e55a00;
+        }
+
+        .ingen-ordre {
+            text-align: center;
+            padding: 3rem;
+            color: #666;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 3rem;
+            color: #666;
+            font-size: 1.2rem;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+            z-index: 1000;
+        }
+
+        .modal.show {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-content {
+            background: white;
+            padding: 2rem;
+            border-radius: 8px;
+            max-width: 600px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+
+        .close-btn {
+            background: none;
+            border: none;
+            font-size: 2rem;
+            cursor: pointer;
+            color: #666;
+        }
+
+        .kunde-info, .produkt-info {
+            margin-bottom: 1.5rem;
+        }
+
+        .kunde-info h3, .produkt-info h3 {
+            color: #1a1a1a;
+            margin-bottom: 0.5rem;
+        }
+
+        .info-row {
+            padding: 0.5rem 0;
+            border-bottom: 1px solid #eee;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>⚡ POWER</h1>
+        <p class="tagline">Admin - Ordre Oversigt</p>
+        <nav>
+            <ul>
+                <li><a href="/">Produkter</a></li>
+                <li><a href="/kurv.html">Kurv</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <div class="admin-container">
+        <div class="admin-header">
+            <h2>Alle Ordre</h2>
+        </div>
+
+        <div id="ordre-container">
+            <div class="loading">Henter ordre...</div>
+        </div>
+    </div>
+
+    <!-- Modal til ordre detaljer -->
+    <div id="ordre-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Ordre Detaljer</h2>
+                <button class="close-btn" onclick="lukModal()">&times;</button>
+            </div>
+            <div id="modal-body"></div>
+        </div>
+    </div>
+
+    <script src="/js/auth.js"></script>
+    <script>
+        // Hent alle ordre
+        async function hentOrdre() {
+            try {
+                const response = await fetch('http://localhost:3000/api/ordre');
+                if (!response.ok) {
+                    throw new Error('Kunne ikke hente ordre');
+                }
+                
+                const ordre = await response.json();
+                visOrdre(ordre);
+            } catch (error) {
+                console.error('Fejl:', error);
+                document.getElementById('ordre-container').innerHTML = 
+                    '<div class="ingen-ordre">❌ Kunne ikke hente ordre</div>';
+            }
+        }
+
+        // Vis ordre i tabel
+        function visOrdre(ordre) {
+            const container = document.getElementById('ordre-container');
+            
+            if (ordre.length === 0) {
+                container.innerHTML = '<div class="ingen-ordre">Ingen ordre endnu</div>';
+                return;
+            }
+
+            let html = `
+                <div class="ordre-tabel">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Ordre ID</th>
+                                <th>Kunde</th>
+                                <th>Email</th>
+                                <th>Total</th>
+                                <th>Status</th>
+                                <th>Dato</th>
+                                <th>Handling</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+            `;
+
+            ordre.forEach(o => {
+                const dato = new Date(o.oprettet_dato).toLocaleString('da-DK');
+                html += `
+                    <tr>
+                        <td class="ordre-id">${o.ordre_id}</td>
+                        <td>${o.kunde_navn}</td>
+                        <td>${o.kunde_email}</td>
+                        <td>${o.total_pris.toLocaleString('da-DK')} kr.</td>
+                        <td><span class="status-badge status-${o.status}">${o.status}</span></td>
+                        <td>${dato}</td>
+                        <td><button class="detalje-btn" onclick="visDetaljer('${o.ordre_id}')">Se detaljer</button></td>
+                    </tr>
+                `;
+            });
+
+            html += '</tbody></table></div>';
+            container.innerHTML = html;
+        }
+
+        // Vis ordre detaljer i modal
+        async function visDetaljer(ordreId) {
+            try {
+                const response = await fetch(`http://localhost:3000/api/ordre/${ordreId}`);
+                if (!response.ok) {
+                    throw new Error('Kunne ikke hente ordre detaljer');
+                }
+                
+                const ordre = await response.json();
+                
+                const modalBody = document.getElementById('modal-body');
+                modalBody.innerHTML = `
+                    <div class="kunde-info">
+                        <h3>Kundeoplysninger</h3>
+                        <div class="info-row"><strong>Navn:</strong> ${ordre.kunde_navn}</div>
+                        <div class="info-row"><strong>Email:</strong> ${ordre.kunde_email}</div>
+                        <div class="info-row"><strong>Telefon:</strong> ${ordre.kunde_telefon}</div>
+                        <div class="info-row"><strong>Adresse:</strong> ${ordre.kunde_adresse}</div>
+                        <div class="info-row"><strong>Postnr/By:</strong> ${ordre.kunde_postnr} ${ordre.kunde_by}</div>
+                    </div>
+                    
+                    <div class="produkt-info">
+                        <h3>Produkter</h3>
+                        ${ordre.produkter.map(p => `
+                            <div class="info-row">
+                                ${p.produkt_navn} x ${p.antal} - ${(p.produkt_pris * p.antal).toLocaleString('da-DK')} kr.
+                            </div>
+                        `).join('')}
+                    </div>
+                    
+                    <div class="ordre-total">
+                        <strong>Total: ${ordre.total_pris.toLocaleString('da-DK')} kr.</strong>
+                    </div>
+                `;
+                
+                document.getElementById('ordre-modal').classList.add('show');
+            } catch (error) {
+                console.error('Fejl:', error);
+                alert('Kunne ikke hente ordre detaljer');
+            }
+        }
+
+        function lukModal() {
+            document.getElementById('ordre-modal').classList.remove('show');
+        }
+
+        // Luk modal ved klik udenfor
+        document.getElementById('ordre-modal').addEventListener('click', (e) => {
+            if (e.target.id === 'ordre-modal') {
+                lukModal();
+            }
+        });
+
+        // Initialiser
+        hentOrdre();
+    </script>
+</body>
+</html>
