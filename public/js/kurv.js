@@ -32,22 +32,22 @@ function opdaterKurv() {
         total += subtotal;
         antalVarer += item.antal;
         html += `
-            <div class="kurv-item">
+            <div class="kurv-item" data-item-id="${item.id}">
                 <div class="kurv-item-info">
                     <h3>${item.navn}</h3>
                     <p class="kurv-item-beskrivelse">${item.beskrivelse}</p>
                     <p class="kurv-item-mærke">Mærke: ${item.mærke}</p>
                 </div>
                 <div class="kurv-item-antal">
-                    <button onclick="ændrAntal(${item.id}, -1)" class="antal-btn">-</button>
+                    <button class="antal-btn minus-btn" data-id="${item.id}">-</button>
                     <span class="antal">${item.antal}</span>
-                    <button onclick="ændrAntal(${item.id}, 1)" class="antal-btn">+</button>
+                    <button class="antal-btn plus-btn" data-id="${item.id}">+</button>
                 </div>
                 <div class="kurv-item-pris">
                     <p class="enhedspris">${item.pris.toLocaleString('da-DK')} kr. stk.</p>
                     <p class="subtotal">${subtotal.toLocaleString('da-DK')} kr.</p>
                 </div>
-                <button onclick="fjernFraKurv(${item.id})" class="fjern-btn">🗑️</button>
+                <button class="fjern-btn" data-id="${item.id}">🗑️</button>
             </div>
         `;
     });
@@ -56,6 +56,17 @@ function opdaterKurv() {
     kurvIndhold.innerHTML = html;
     kurvAntal.textContent = antalVarer;
     totalPris.textContent = total.toLocaleString('da-DK');
+    
+    // Event delegation for kurv knapper
+    kurvIndhold.querySelectorAll('.minus-btn').forEach(btn => {
+        btn.addEventListener('click', () => ændrAntal(Number(btn.dataset.id), -1));
+    });
+    kurvIndhold.querySelectorAll('.plus-btn').forEach(btn => {
+        btn.addEventListener('click', () => ændrAntal(Number(btn.dataset.id), 1));
+    });
+    kurvIndhold.querySelectorAll('.fjern-btn').forEach(btn => {
+        btn.addEventListener('click', () => fjernFraKurv(Number(btn.dataset.id)));
+    });
 }
 
 // Ændr antal
@@ -220,5 +231,13 @@ function visOrdreBekreftelse(ordre) {
     `;
 }
 
-// Initialiser
-Cart.ensureAuthChecked().then(()=>opdaterKurv());
+// Initialiser når DOM er klar
+document.addEventListener('DOMContentLoaded', ()=>{
+  Cart.ensureAuthChecked().then(()=>{
+    opdaterKurv();
+    const btn = document.getElementById('checkout-btn');
+    if (btn) {
+      btn.addEventListener('click', checkout);
+    }
+  });
+});

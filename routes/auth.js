@@ -41,7 +41,7 @@ router.post('/register', (req, res) => {
             res.cookie('auth_token', token, {
                 httpOnly: true,
                 sameSite: 'strict',
-                secure: false,
+                secure: process.env.USE_HTTPS === 'true',
                 maxAge: 2 * 60 * 60 * 1000
             });
             res.json({ success: true, email });
@@ -62,7 +62,7 @@ router.post('/login', (req, res) => {
         res.cookie('auth_token', token, {
             httpOnly: true,
             sameSite: 'strict',
-            secure: false,
+            secure: process.env.USE_HTTPS === 'true',
             maxAge: 2 * 60 * 60 * 1000
         });
         res.json({ success: true, email });
@@ -74,7 +74,7 @@ router.get('/me', authMiddleware, (req, res) => {
 });
 
 router.post('/logout', (req, res) => {
-    res.cookie('auth_token', '', { httpOnly: true, sameSite: 'strict', secure: false, maxAge: 0 });
+    res.cookie('auth_token', '', { httpOnly: true, sameSite: 'strict', secure: process.env.USE_HTTPS === 'true', maxAge: 0 });
     res.json({ success: true });
 });
 

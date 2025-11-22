@@ -169,7 +169,7 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h2>Ordre Detaljer</h2>
-                <button class="close-btn" onclick="lukModal()">&times;</button>
+                <button class="close-btn" id="modal-close-btn">&times;</button>
             </div>
             <div id="modal-body"></div>
         </div>
@@ -180,15 +180,14 @@
         // Hent alle ordre
         async function hentOrdre() {
             try {
-                const response = await fetch('http://localhost:3000/api/ordre');
+                const response = await fetch('/api/ordre', { cache: 'no-store' });
                 if (!response.ok) {
                     throw new Error('Kunne ikke hente ordre');
                 }
-                
                 const ordre = await response.json();
                 visOrdre(ordre);
             } catch (error) {
-                console.error('Fejl:', error);
+                console.error('Fejl ved hentning af ordre:', error);
                 document.getElementById('ordre-container').innerHTML = 
                     '<div class="ingen-ordre">❌ Kunne ikke hente ordre</div>';
             }
@@ -230,19 +229,24 @@
                         <td>${o.total_pris.toLocaleString('da-DK')} kr.</td>
                         <td><span class="status-badge status-${o.status}">${o.status}</span></td>
                         <td>${dato}</td>
-                        <td><button class="detalje-btn" onclick="visDetaljer('${o.ordre_id}')">Se detaljer</button></td>
+                        <td><button class="detalje-btn" data-ordre-id="${o.ordre_id}">Se detaljer</button></td>
                     </tr>
                 `;
             });
 
             html += '</tbody></table></div>';
             container.innerHTML = html;
+            
+            // Tilføj event listeners til detalje knapper
+            container.querySelectorAll('.detalje-btn').forEach(btn => {
+                btn.addEventListener('click', () => visDetaljer(btn.dataset.ordreId));
+            });
         }
 
         // Vis ordre detaljer i modal
         async function visDetaljer(ordreId) {
             try {
-                const response = await fetch(`http://localhost:3000/api/ordre/${ordreId}`);
+                const response = await fetch(`/api/ordre/${ordreId}`);
                 if (!response.ok) {
                     throw new Error('Kunne ikke hente ordre detaljer');
                 }
@@ -292,8 +296,14 @@
             }
         });
 
-        // Initialiser
-        hentOrdre();
+        // Initialiser når DOM er klar
+        document.addEventListener('DOMContentLoaded', () => {
+            hentOrdre();
+            
+            // Close button for modal
+            const closeBtn = document.getElementById('modal-close-btn');
+            if (closeBtn) closeBtn.addEventListener('click', lukModal);
+        });
     </script>
 </body>
 </html>

@@ -7,7 +7,8 @@ let filtreretProdukter = [];
 // Hent produkter fra API
 async function hentProdukter() {
     try {
-        const response = await fetch('http://localhost:3000/api/produkter');
+        // Brug relative sti så både HTTP og HTTPS virker
+        const response = await fetch('/api/produkter');
         if (!response.ok) {
             throw new Error('Kunne ikke hente produkter');
         }
@@ -40,8 +41,10 @@ function visProdukter(produkterAtVise = produkter) {
             <p class="beskrivelse">${produkt.beskrivelse}</p>
             <p class="kategori">Kategori: ${getCategoryName(produkt.kategori)}</p>
             <p class="pris">${produkt.pris.toLocaleString('da-DK')} kr.</p>
-            <button onclick="tilføjTilKurv(${produkt.id})">Tilføj til kurv</button>
+            <button class="tilfoej-kurv" data-id="${produkt.id}">Tilføj til kurv</button>
         `;
+        const btn = produktCard.querySelector('.tilfoej-kurv');
+        btn.addEventListener('click', () => tilføjTilKurv(produkt.id));
         produktListe.appendChild(produktCard);
     });
 }
