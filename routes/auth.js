@@ -6,7 +6,10 @@ const db = require('../database/db');
 
 const router = express.Router();
 
-const JWT_SECRET = 'super_hemmelig_nøgle'; // TODO: flyt til env
+const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET) {
+    throw new Error('JWT_SECRET mangler i miljøvariabler (.env)');
+}
 
 // Middleware til auth
 function authMiddleware(req, res, next) {
